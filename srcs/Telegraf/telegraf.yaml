@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tf-service
+  annotations:
+    metallb.universe.tf/allow-shared-ip: shared
+spec:
+  selector:
+    app: tf
+  ports:
+    - name: statsd
+      port: 8125
+      targetPort: 8125
+      protocol: TCP
+    - name: udp
+      port: 8092
+      targetPort: 8092
+      protocol: UDP
+    - name: tcp
+      port: 8094
+      targetPort: 8094
+      protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telegraf-config
+  labels:
+    app: tf
+data:
+  telegraf.conf: |+
+    [[inputs.docker]]
+      endpoint = "unix:///var/run/docker.sock"
+      gather_services = false
+
+    [[outputs.influxdb]]
+      urls = ["http://inf-service:8086"]
+      database = "telegraf"
+      skip_database_creation=false
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tf-deployment
+  labels:
+    app: tf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tf
+  template:
+    metadata:
+      labels:
+        app: tf
+    spec:
+      containers:
+        - name: tf
+          image: ft-services-telegraf
+          imagePullPolicy: Never
+          ports:
+            - name: statsd
+              containerPort: 8125
+              protocol: TCP
+            - name: udp
+              containerPort: 8092
+              protocol: UDP
+            - name: tcp
+              containerPort: 8094
+              protocol: TCP
+          volumeMounts:
+            - name: telegraf-config-volume
+              mountPath: /etc/telegraf/telegraf.conf
+              subPath: telegraf.conf
+            - name: docker-socket-volume
+              mountPath: /var/run/docker.sock
+      volumes:
+        - name: telegraf-config-volume
+          configMap:
+            name: telegraf-config
+        - name: docker-socket-volume
+          hostPath:
+            path: /var/run/docker.sock

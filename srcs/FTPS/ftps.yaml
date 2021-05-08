@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ftps-service
+  annotations:
+    metallb.universe.tf/allow-shared-ip: shared
+spec:
+  selector:
+    app: ftps
+  ports:
+      - port: 21
+        targetPort: 21
+        protocol: TCP
+        name: ftps
+      - port: 20
+        targetPort: 20
+        protocol: TCP
+        name: active
+      - port: 21100
+        targetPort: 21100
+        protocol: TCP
+        name: passive-00
+      - port: 21101
+        targetPort: 21101
+        protocol: TCP
+        name: passive-01
+      - port: 21102
+        targetPort: 21102
+        protocol: TCP
+        name: passive-02
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ftps-deployment
+  labels:
+    app: ftps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ftps
+  template:
+    metadata:
+      labels:
+        app: ftps
+    spec:
+      containers:
+        - name: ftps
+          image: ft-services-ftps
+          env:
+            - name: PASV_ADDRESS
+              valueFrom:
+                secretKeyRef:
+                  name: minikube-ip
+                  key: ip
+          imagePullPolicy: Never
+          ports:
+            - name: ftps
+              containerPort: 21
+              protocol: TCP
+            - name: active
+              containerPort: 20
+              protocol: TCP
+            - name: passive-00
+              containerPort: 21100
+              protocol: TCP
+            - name: passive-01
+              containerPort: 21101
+              protocol: TCP
+            - name: passive-02
+              containerPort: 21102
+              protocol: TCP

@@ -1,0 +1,76 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: graf-service
+  annotations:
+    metallb.universe.tf/allow-shared-ip: shared
+spec:
+  selector:
+    app: graf
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+  type: LoadBalancer
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graf-deployment
+  labels:
+    app: graf
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graf
+  template:
+    metadata:
+      labels:
+        app: graf
+    spec:
+      containers:
+        - name: graf
+          image: ft-services-grafana
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: grafana-provisioning-volume
+              mountPath: /etc/grafana/provisioning/datasources/datasource.yaml
+              subPath: datasource.yaml
+            - name: grafana-provisioning-volume
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yaml
+              subPath: dashboards.yaml
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-ftps.json
+              subPath: dashboard-ftps.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-grafana.json
+              subPath: dashboard-grafana.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-influxdb.json
+              subPath: dashboard-influxdb.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-mysql.json
+              subPath: dashboard-mysql.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-nginx.json
+              subPath: dashboard-nginx.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-phpmyadmin.json
+              subPath: dashboard-phpmyadmin.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-telegraf.json
+              subPath: dashboard-telegraf.json
+            - name: grafana-provisioning-volume
+              mountPath: /var/lib/grafana/dashboards/dashboard-wordpress.json
+              subPath: dashboard-wordpress.json
+      volumes:
+        - name: grafana-provisioning-volume
+          configMap:
+            name: grafana-provisioning
